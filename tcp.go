@@ -6,10 +6,10 @@ package main
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"io"
 	"net"
-
-	"go.uber.org/zap"
+	"strconv"
 )
 
 func tcpCopyData(dst net.Conn, src net.Conn, ch chan<- error) {
@@ -50,9 +50,10 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 		return
 	}
 
-	targetAddr := Opts.TargetAddr6
+	port := []rune("190.115.196.10:10000")[Opts.ListenAddrLen:Opts.ListenAddrLen+5]
+	targetAddr := Opts.TargetAddr6 + ":" + string(port)
 	if AddrVersion(saddr) == 4 {
-		targetAddr = Opts.TargetAddr4
+		targetAddr = Opts.TargetAddr4 + ":" + string(port)
 	}
 
 	clientAddr := "UNKNOWN"
@@ -118,22 +119,42 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 
 func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<- error) {
 	ctx := context.Background()
-	ln, err := listenConfig.Listen(ctx, "tcp", Opts.ListenAddr)
-	if err != nil {
-		logger.Error("failed to bind listener", zap.Error(err))
-		errors <- err
-		return
+
+	conns := make(chan net.Conn)
+	errs := make(chan error)
+
+	for port := Opts.StartPort; port < Opts.EndPort; port++ {
+		go func() {
+			ln, err := listenConfig.Listen(ctx, "tcp", Opts.ListenAddr + ":" + strconv.Itoa(port))
+			if err != nil {
+				logger.Error("failed to bind listener", zap.Error(err))
+				errors <- err
+				return
+			}
+
+			for {
+				conn, err := ln.Accept()
+				conns <- conn
+				errs <- err
+			}
+		}()
 	}
 
 	logger.Info("listening")
 
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			logger.Error("failed to accept new connection", zap.Error(err))
-			errors <- err
-			return
+	go func() {
+		for {
+			err := <- errs
+			if err != nil {
+				logger.Error("failed to accept new connection", zap.Error(err))
+				errors <- err
+				return
+			}
 		}
+	}()
+
+	for {
+		conn := <- conns
 
 		go tcpHandleConnection(conn, logger)
 	}

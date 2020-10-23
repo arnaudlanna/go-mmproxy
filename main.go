@@ -19,8 +19,11 @@ import (
 type options struct {
 	Protocol           string
 	ListenAddr         string
+	ListenAddrLen         int
 	TargetAddr4        string
 	TargetAddr6        string
+	StartPort int
+	EndPort int
 	Mark               int
 	Verbose            int
 	allowedSubnetsPath string
@@ -35,9 +38,11 @@ var Opts options
 
 func init() {
 	flag.StringVar(&Opts.Protocol, "p", "tcp", "Protocol that will be proxied: tcp, udp")
-	flag.StringVar(&Opts.ListenAddr, "l", "0.0.0.0:8443", "Address the proxy listens on")
-	flag.StringVar(&Opts.TargetAddr4, "4", "127.0.0.1:443", "Address to which IPv4 traffic will be forwarded to")
-	flag.StringVar(&Opts.TargetAddr6, "6", "[::1]:443", "Address to which IPv6 traffic will be forwarded to")
+	flag.StringVar(&Opts.ListenAddr, "l", "0.0.0.0", "Address the proxy listens on")
+	flag.StringVar(&Opts.TargetAddr4, "4", "127.0.0.1", "Address to which IPv4 traffic will be forwarded to")
+	flag.StringVar(&Opts.TargetAddr6, "6", "[::1]", "Address to which IPv6 traffic will be forwarded to")
+	flag.IntVar(&Opts.StartPort, "sp", 10000, "Start port")
+	flag.IntVar(&Opts.EndPort, "ep", 11000, "End port")
 	flag.IntVar(&Opts.Mark, "mark", 0, "The mark that will be set on outbound packets")
 	flag.IntVar(&Opts.Verbose, "v", 0, `0 - no logging of individual connections
 1 - log errors occurring in individual connections
@@ -68,7 +73,7 @@ func listen(listenerNum int, errors chan<- error) {
 	if Opts.Protocol == "tcp" {
 		TCPListen(&listenConfig, logger, errors)
 	} else {
-		UDPListen(&listenConfig, logger, errors)
+		//UDPListen(&listenConfig, logger, errors)
 	}
 }
 
@@ -140,6 +145,8 @@ func main() {
 		Opts.Logger.Fatal("--close-after has to be >= 0", zap.Int("close-after", Opts.udpCloseAfter))
 	}
 	Opts.UDPCloseAfter = time.Duration(Opts.udpCloseAfter) * time.Second
+
+	Opts.ListenAddrLen = len(Opts.ListenAddr) + 1
 
 	listenErrors := make(chan error, Opts.Listeners)
 	for i := 0; i < Opts.Listeners; i++ {
