@@ -19,7 +19,6 @@ import (
 type options struct {
 	Protocol           string
 	ListenAddr         string
-	ListenAddrLen         int
 	TargetAddr4        string
 	TargetAddr6        string
 	StartPort int
@@ -145,8 +144,6 @@ func main() {
 		Opts.Logger.Fatal("--close-after has to be >= 0", zap.Int("close-after", Opts.udpCloseAfter))
 	}
 	Opts.UDPCloseAfter = time.Duration(Opts.udpCloseAfter) * time.Second
-
-	Opts.ListenAddrLen = len(Opts.ListenAddr) + 1
 
 	listenErrors := make(chan error, Opts.Listeners)
 	for i := 0; i < Opts.Listeners; i++ {
