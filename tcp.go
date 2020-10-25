@@ -50,10 +50,9 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 		return
 	}
 
-	port := []rune("190.115.196.10:10000")[Opts.ListenAddrLen:Opts.ListenAddrLen+5]
-	targetAddr := Opts.TargetAddr6 + ":" + string(port)
+	targetAddr := Opts.TargetAddr6 + ":" + strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)
 	if AddrVersion(saddr) == 4 {
-		targetAddr = Opts.TargetAddr4 + ":" + string(port)
+		targetAddr = Opts.TargetAddr4 + ":" + strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)
 	}
 
 	clientAddr := "UNKNOWN"
@@ -124,6 +123,7 @@ func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<-
 	errs := make(chan error)
 
 	for port := Opts.StartPort; port < Opts.EndPort; port++ {
+		port := port
 		go func() {
 			ln, err := listenConfig.Listen(ctx, "tcp", Opts.ListenAddr + ":" + strconv.Itoa(port))
 			if err != nil {
@@ -153,9 +153,11 @@ func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<-
 		}
 	}()
 
-	for {
-		conn := <- conns
-
-		go tcpHandleConnection(conn, logger)
+	for i := 0; i < 128; i++ {
+		go func() {
+			for conn := range conns {
+				go tcpHandleConnection(conn, logger)
+			}
+		}()
 	}
 }
