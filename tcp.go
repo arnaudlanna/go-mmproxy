@@ -160,8 +160,11 @@ func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<-
 	for i := 0; i < 64; i++ {
 		go func() {
 			for conn := range conns {
-				conn := conn
-				go tcpHandleConnection(conn, logger)
+				if conn != nil {
+					go tcpHandleConnection(conn, logger)
+				} else {
+					logger.Error("can't accept nil conn")
+				}
 			}
 		}()
 	}
