@@ -50,9 +50,9 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 		return
 	}
 
-	targetAddr := Opts.TargetAddr6 + ":" + strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)
+	targetAddr := Opts.TargetAddr6 + ":" + strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port - 10000)
 	if AddrVersion(saddr) == 4 {
-		targetAddr = Opts.TargetAddr4 + ":" + strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)
+		targetAddr = Opts.TargetAddr4 + ":" + strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port - 10000)
 	}
 
 	clientAddr := "UNKNOWN"
