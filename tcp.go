@@ -132,10 +132,14 @@ func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<-
 				return
 			}
 
-			for {
-				conn, err := ln.Accept()
-				conns <- conn
-				errs <- err
+			for i := 0; i < 64; i++ {
+				go func() {
+					for {
+						conn, err := ln.Accept()
+						conns <- conn
+						errs <- err
+					}
+				}()
 			}
 		}()
 	}
@@ -153,7 +157,7 @@ func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<-
 		}
 	}()
 
-	for i := 0; i < 128; i++ {
+	for i := 0; i < 64; i++ {
 		go func() {
 			for conn := range conns {
 				conn := conn
